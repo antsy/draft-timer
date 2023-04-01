@@ -124,7 +124,7 @@
             <button id="pause" onClick="pause()">▶️</button>
         </div>
         <div class="reset">
-            <button onClick="reset()">♻️</button>
+            <button onClick="reset(true)">♻️</button>
         </div>
         <div class="progress">
             <progress value="100" max="100"></progress>
@@ -161,7 +161,7 @@
             5 * second, // 2
         ];
 
-        timeScale = 1.0;
+        timeScale = 0.1;
         times = times.map(t => { return t * timeScale });
 
         speak = (text) => {
@@ -206,10 +206,7 @@
                 } else {
                     speak("draft over!");
                     console.log(`Draft over at ${formatTime(new Date())}`);
-                    isRunning = false;
-                    currentPick = 0;
-                    timeRemaining = 0;
-                    document.getElementById("pause").innerHTML = playSymbol;
+                    reset(false);
                 }
             }
         }
@@ -225,17 +222,19 @@
             progress.value = percentage;
         }
 
-        reset = () => {
+        reset = (withSpeech) => {
             isRunning = false;
             currentPick = 0;
             timeRemaining = 0;
             document.getElementById("currentPick").innerHTML = times.length - currentPick;
             document.getElementById("time").innerHTML = Math.ceil(timeRemaining / second);
             document.getElementById("pause").innerHTML = playSymbol;
-            speak('timer reset');
+            if (withSpeech) {
+                speak('timer reset');
+            }
         }
 
-        reset();
+        reset(false);
     </script>
 </body>
 
