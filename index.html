@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Draft timer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Permanent Marker';
+            --color-1: #00A6ED;
+            --color-2: #00D26A;
+            --color-3: #99E0FF;
+            --color-4: #005229;
+            --color-5: #ED4700;
+        }
+
+        body {
+            background-color: var(--color-3);
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: calc((75vw) / 15);
+            margin-top: 0.5vw;
+            margin-bottom: 0.5vw;
+            color: var(--color-4);
+        }
+
+        p {
+            font-size: calc((75vw) / 20);
+            margin-top: 0.5vw;
+            margin-bottom: 0.5vw;
+            color: var(--color-4);
+        }
+
+        #github-ribbon {
+            position: absolute;
+            top: 0;
+            right: 0;
+            border: 0;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 0.5vw 0.5vw;
+            grid-auto-flow: row;
+            grid-template-areas:
+                "info info"
+                "pause reset"
+                "progress progress";
+        }
+
+        .info {
+            grid-area: info;
+        }
+
+        .pause {
+            grid-area: pause;
+        }
+
+        .reset {
+            grid-area: reset;
+        }
+
+        .progress {
+            grid-area: progress;
+        }
+
+        button {
+            width: 100%;
+            height: 100%;
+            font-size: calc((75vw) / 10);
+            border-radius: 1vw;
+            background-color: var(--color-3);
+            box-shadow: 7px 6px 28px 1px rgba(0, 0, 0, 0.24);
+            cursor: pointer;
+            outline: none;
+            transition: 0.2s all;
+        }
+
+        button:active {
+            transform: scale(0.98);
+            box-shadow: 3px 2px 22px 1px rgba(0, 0, 0, 0.24);
+        }
+
+        progress {
+            margin-top: 0.5vw;
+            margin-bottom: 0.5vw;
+            width: 100%;
+            background: var(--color-5);
+        }
+
+        progress::-moz-progress-bar {
+            background: var(--color-3);
+        }
+
+        progress::-webkit-progress-value {
+            background: var(--color-1);
+        }
+
+        progress::-webkit-progress-bar {
+            background: var(--color-5);
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <a id="github-ribbon" href="https://github.com/antsy/draft-timer"><img decoding="async" loading="lazy" width="149"
+            height="149"
+            src="https://github.blog/wp-content/uploads/2008/12/forkme_right_red_aa0000.png?resize=149%2C149"
+            class="attachment-full size-full" alt="Fork me on GitHub" data-recalc-dims="1"></a>
+    <div class="container">
+        <div class="info">
+            <h1>Flesh&Blood Draft timer</h1>
+            <p>Cards left: <span id="currentPick"></span></p>
+            <p>Time remaining: <span id="time"></span></p>
+        </div>
+        <div class="pause">
+            <button id="pause" onClick="pause()">▶️</button>
+        </div>
+        <div class="reset">
+            <button onClick="reset()">♻️</button>
+        </div>
+        <div class="progress">
+            <progress value="100" max="100"></progress>
+        </div>
+    </div>
+    <script>
+        let isRunning = false;
+        let currentPick = 0;
+        let timeRemaining = 0;
+
+        const pauseSymbol = "⏸️";
+        const playSymbol = "▶️";
+
+        const tickTime = 25; // ms
+        const second = 1000;
+
+        // Source: https://fabtcg.com/documents/247/FaB_Tournament_Rules_and_Policy_2023_03_31.pdf
+        let times = [
+            50 * second, // 15
+            50 * second, // 14
+            50 * second, // 13
+            50 * second, // 12
+            40 * second, // 11
+
+            40 * second, // 10
+            30 * second, // 9
+            30 * second, // 8
+            20 * second, // 7
+            20 * second, // 6
+
+            10 * second, // 5
+            10 * second, // 4
+            5 * second, // 3
+            5 * second, // 2
+        ];
+
+        timeScale = 1.0;
+        times = times.map(t => { return t * timeScale });
+
+        speak = (text) => {
+            const msg = new SpeechSynthesisUtterance(text);
+            setTimeout(() => { window.speechSynthesis.speak(msg); }, 0);
+        }
+
+        pause = () => {
+            if (isRunning) {
+                isRunning = false;
+                document.getElementById("pause").innerHTML = playSymbol;
+            } else {
+                draftStartTime = Date.now();
+                isRunning = true;
+                document.getElementById("pause").innerHTML = pauseSymbol;
+                tick();
+            }
+        }
+
+        tick = () => {
+            if (isRunning) {
+                if (timeRemaining <= 0) {
+                    timeRemaining = times[currentPick];
+                    if (currentPick == 0) {
+                        speak("Begin drafting!");
+                        console.log(`Begin draft at ${formatTime(new Date())}`);
+                    } else {
+                        speak(`pick ${currentPick}, draft!`);
+                        console.log(`Pick ${currentPick} at ${formatTime(new Date())}`);
+                    }
+                    currentPick++;
+                    console.log(`Pick ${currentPick} has ${timeRemaining / second} seconds`);
+                    document.getElementById("currentPick").innerHTML = times.length - currentPick + 1;
+                } else {
+                    timeRemaining = timeRemaining - tickTime; // this is not 100% accurate, but close enough for our purposes
+                }
+
+                if (currentPick < times.length) {
+                    document.getElementById("time").innerHTML = Math.ceil(timeRemaining / second);
+                    updateProgressBar();
+                    setTimeout(tick, tickTime);
+                } else {
+                    speak("draft over!");
+                    console.log(`Draft over at ${formatTime(new Date())}`);
+                    isRunning = false;
+                    currentPick = 0;
+                    timeRemaining = 0;
+                    document.getElementById("pause").innerHTML = playSymbol;
+                }
+            }
+        }
+
+        formatTime = (date) => {
+            return `${date.getHours().toLocaleString(undefined, {minimumIntegerDigits:2})}:${date.getMinutes().toLocaleString(undefined, {minimumIntegerDigits:2})}:${date.getSeconds().toLocaleString(undefined, {minimumIntegerDigits:2})}.${date.getMilliseconds().toLocaleString(undefined, {minimumIntegerDigits:3})}`;
+        }
+
+        updateProgressBar = () => {
+            const progress = document.querySelector("progress");
+            total = times[currentPick - 1];
+            const percentage = (timeRemaining / total) * 100
+            progress.value = percentage;
+        }
+
+        reset = () => {
+            isRunning = false;
+            currentPick = 0;
+            timeRemaining = 0;
+            document.getElementById("currentPick").innerHTML = times.length - currentPick;
+            document.getElementById("time").innerHTML = Math.ceil(timeRemaining / second);
+            document.getElementById("pause").innerHTML = playSymbol;
+            speak('timer reset');
+        }
+
+        reset();
+    </script>
+</body>
+
+</html>
